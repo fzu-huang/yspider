@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"github.com/PuerkitoBio/goquery"
 	//"github.com/robertkrimen/otto"
 	//"github.com/robertkrimen/otto/parser"
@@ -15,7 +15,6 @@ import (
 )
 
 func do() {
-	//defer m.Done()
 	idletime := time.NewTicker(time.Second * 10)
 	ticktime := time.NewTicker(time.Second * 1)
 	idle := false
@@ -60,22 +59,20 @@ func Craw(node CheckNode) {
 	url := node.url
 	dep := node.dep
 
-	/*
-		if strings.HasSuffix(url, ".jpg") || strings.HasSuffix(url, ".JPG") || strings.HasSuffix(url, ".png") {
-			atomic.AddInt32(&ImgCount, 1)
-			go WriteFile(url)
-			return
-		}
-	*/
-
-	if strings.HasSuffix(url, ".torrent") || strings.HasSuffix(url, ".pdf") {
+	if strings.HasSuffix(url, ".jpg") || strings.HasSuffix(url, ".JPG") || strings.HasSuffix(url, ".png") {
 		atomic.AddInt64(&ImgCount, 1)
-		fmt.Println("go  write...")
 		go WriteFile(url)
 		return
 	}
 
-	if dep >= Depth {
+	//	if strings.HasSuffix(url, ".torrent") || strings.HasSuffix(url, ".pdf") {
+	//		atomic.AddInt64(&ImgCount, 1)
+	//		fmt.Println("go  write...")
+	//		go WriteFile(url)
+	//		return
+	//	}
+
+	if dep+1 > Depth {
 		return
 	}
 	atomic.AddInt64(&Count, 1)
@@ -84,19 +81,20 @@ func Craw(node CheckNode) {
 
 	if err != nil {
 		//fmt.Println(err)
+		netErrCount++
 		return
 	}
 
 	//find javascript
-	jssele := doc.Find("Script")
-	l := len(jssele.Nodes)
-	if jssele != nil && l != 0 {
-		for i := 0; i < l; i++ {
-			//fmt.Println(jssele.Eq(i).Text())
-			//go ParseJS(jssele.Text())
-		}
-
-	}
+	//	jssele := doc.Find("Script")
+	//	l := len(jssele.Nodes)
+	//	if jssele != nil && l != 0 {
+	//		for i := 0; i < l; i++ {
+	//			fmt.Println(jssele.Eq(i).Text())
+	//			go ParseJS(jssele.Text())
+	//		}
+	//		return
+	//	}
 
 	selection := doc.Find("[href],[src],[url]")
 	if selection == nil || len(selection.Nodes) == 0 {
@@ -122,6 +120,8 @@ func Craw(node CheckNode) {
 
 //文件的获取和写入
 func WriteFile(url string) {
+	atomic.AddInt64(&writingCount, 1)
+	defer atomic.AddInt64(&writingCount, -1)
 	res, err := http.Get(url)
 	if err != nil {
 		//fmt.Println("write file err!!", err)
@@ -139,11 +139,12 @@ func WriteFile(url string) {
 	//filename := `./red/` + subpath[len(subpath)-1]
 	filename = CheckFileExist(filename, 0)
 	f, err := os.Create(filename)
-	defer f.Close()
+
 	if err != nil {
 		//fmt.Println("write file err!!", err)
 		return
 	}
+	defer f.Close()
 	f.Write(buf[0:])
 }
 
